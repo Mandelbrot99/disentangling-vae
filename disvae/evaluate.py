@@ -130,6 +130,7 @@ class Evaluator:
         except AttributeError:
             raise ValueError("Dataset needs to have known true factors of variations to compute the metric. This does not seem to be the case for {}".format(type(dataloader.__dict__["dataset"]).__name__))
         print(self._compute_q_zCx)
+        print("dis metric:")
         self._disentanglement_metric(32, lat_sizes, lat_imgs)
 
 
