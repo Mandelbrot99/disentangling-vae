@@ -168,7 +168,8 @@ class Evaluator:
         """
         #sample random latent factor that is to be kept fixed
         y = np.random.randint(lat_sizes.size, 1)
-        y_lat = np.random.randint(lat_sizes[y], size=sample_size)
+        y_val = np.random.randint(lat_sizes[y], 1)
+        y_lat = np.full(sample_size, y_val)
 
         samples = np.zeros((sample_size, lat_sizes.size))
         for i, lat_size in enumerate(lat_sizes):
