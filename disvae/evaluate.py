@@ -188,9 +188,11 @@ class Evaluator:
 
         latent_indices1 = np.dot(samples1, latents_bases).astype(int)
         latent_indices2 = np.dot(samples2, latents_bases).astype(int)
-        imgs_sampled1 = torch.from_numpy(imgs[latent_indices1]).unsqueeze_(1)
-        imgs_sampled2 = torch.from_numpy(imgs[latent_indices2]).unsqueeze_(1)
+        imgs_sampled1 = torch.from_numpy(imgs[latent_indices1]).unsqueeze_(1).float()
+        imgs_sampled2 = torch.from_numpy(imgs[latent_indices2]).unsqueeze_(1).float()
 
+        print(imgs_sampled1)
+        print(imgs_sampled1.shape)
         with torch.no_grad():
             mu1, _ = self.model.encoder(imgs_sampled1.to(self.device))
             mu2, _ = self.model.encoder(imgs_sampled2.to(self.device))    
