@@ -129,6 +129,7 @@ class Evaluator:
             lat_imgs = dataloader.dataset.imgs
         except AttributeError:
             raise ValueError("Dataset needs to have known true factors of variations to compute the metric. This does not seem to be the case for {}".format(type(dataloader.__dict__["dataset"]).__name__))
+        print(self._compute_q_zCx)
         self._disentanglement_metric(32, lat_sizes, lat_imgs)
 
 
@@ -191,8 +192,8 @@ class Evaluator:
         imgs_sampled1 = torch.from_numpy(imgs[latent_indices1]).unsqueeze_(1).float()
         imgs_sampled2 = torch.from_numpy(imgs[latent_indices2]).unsqueeze_(1).float()
 
-        print(imgs_sampled1)
-        print(imgs_sampled1.shape)
+        #print(imgs_sampled1)
+        #print(imgs_sampled1.shape)
         with torch.no_grad():
             mu1, _ = self.model.encoder(imgs_sampled1.to(self.device))
             mu2, _ = self.model.encoder(imgs_sampled2.to(self.device))    
@@ -204,7 +205,7 @@ class Evaluator:
 
         print(z_diff)
 
-        z_diff_b = torch.mean(z_diff, 1, True)
+        z_diff_b = torch.mean(z_diff, 0, True)
 
         print(z_diff_b)
 
