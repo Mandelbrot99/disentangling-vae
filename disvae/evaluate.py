@@ -167,8 +167,8 @@ class Evaluator:
         Compute the disentanglement metric score as proposed in the original paper
         """
         #sample random latent factor that is to be kept fixed
-        y = np.random.randint(lat_sizes.size, 1)
-        y_val = np.random.randint(lat_sizes[y], 1)
+        y = np.random.randint(lat_sizes.size, size=1)
+        y_val = np.random.randint(lat_sizes[y], size=1)
         y_lat = np.full(sample_size, y_val)
 
         samples = np.zeros((sample_size, lat_sizes.size))
