@@ -129,7 +129,6 @@ class Evaluator:
             lat_imgs = dataloader.dataset.imgs
         except AttributeError:
             raise ValueError("Dataset needs to have known true factors of variations to compute the metric. This does not seem to be the case for {}".format(type(dataloader.__dict__["dataset"]).__name__))
-        self._compute_q_zCx(dataloader)
         self._disentanglement_metric(32, lat_sizes, lat_imgs)
 
 
@@ -189,8 +188,8 @@ class Evaluator:
 
         latent_indices1 = np.dot(samples1, latents_bases).astype(int)
         latent_indices2 = np.dot(samples2, latents_bases).astype(int)
-        imgs_sampled1 = torch.from_numpy(imgs[latent_indices1].unsqueeze_(1))
-        imgs_sampled2 = torch.from_numpy(imgs[latent_indices2].unsqueeze_(1))
+        imgs_sampled1 = torch.from_numpy(imgs[latent_indices1]).unsqueeze_(1)
+        imgs_sampled2 = torch.from_numpy(imgs[latent_indices2]).unsqueeze_(1)
 
         with torch.no_grad():
             mu1, _ = self.model.encoder(imgs_sampled1.to(self.device))
@@ -270,7 +269,6 @@ class Evaluator:
         n = 0
         with torch.no_grad():
             for x, label in dataloader:
-                print(x.shape)
                 batch_size = x.size(0)
                 idcs = slice(n, n + batch_size)
                 q_zCx[idcs, :, 0], q_zCx[idcs, :, 1] = self.model.encoder(x.to(self.device))
