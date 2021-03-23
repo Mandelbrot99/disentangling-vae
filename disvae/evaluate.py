@@ -169,23 +169,30 @@ class Evaluator:
         """
         #sample random latent factor that is to be kept fixed
         y = np.random.randint(lat_sizes.size, size=1)
-        y_val = np.random.randint(lat_sizes[y], size=1)
-        y_lat = np.full(sample_size, y_val)
+        y_lat = np.random.randint(lat_sizes[y], size=sample_size)
 
-        samples = np.zeros((sample_size, lat_sizes.size))
+        samples1 = np.zeros((sample_size, lat_sizes.size))
+        samples2 = np.zeros((sample_size, lat_sizes.size))
+
         for i, lat_size in enumerate(lat_sizes):
-            samples[:, i] = y_lat if i == y else np.random.randint(lat_size, size=sample_size) 
+            samples1[:, i] = y_lat if i == y else np.random.randint(lat_size, size=sample_size) 
+            samples2[:, i] = y_lat if i == y else np.random.randint(lat_size, size=sample_size)
 
-        print(samples)
+        print(samples1)
+        print(samples2)
 
 
         latents_bases = np.concatenate((lat_sizes[::-1].cumprod()[::-1][1:],
                                 np.array([1,])))
 
-        latent_indices = np.dot(samples, latents_bases).astype(int)
-        imgs_sampled = imgs[latent_indices]
+        latent_indices1 = np.dot(samples1, latents_bases).astype(int)
+        latent_indices2 = np.dot(samples2, latents_bases).astype(int)
+        imgs_sampled1 = imgs[latent_indices1]
+        imgs_sampled2 = imgs[latent_indices2]
 
-        print(imgs_sampled)
+        print(imgs_sampled1)
+        print(imgs_sampled2)
+
 
     def _mutual_information_gap(self, sorted_mut_info, lat_sizes, storer=None):
         """Compute the mutual information gap as in [1].
