@@ -174,8 +174,8 @@ class Evaluator:
         samples1 = np.zeros((sample_size, lat_sizes.size))
         samples2 = np.zeros((sample_size, lat_sizes.size))
 
-        print(y)
-        print(y_lat)
+        #print(y)
+        #print(y_lat)
         for i, lat_size in enumerate(lat_sizes):
             samples1[:, i] = y_lat if i == y else np.random.randint(lat_size, size=sample_size) 
             samples2[:, i] = y_lat if i == y else np.random.randint(lat_size, size=sample_size)
@@ -192,8 +192,20 @@ class Evaluator:
         imgs_sampled1 = imgs[latent_indices1]
         imgs_sampled2 = imgs[latent_indices2]
 
-        print(imgs_sampled1)
-        print(imgs_sampled2)
+        with torch.no_grad():
+            mu1, _ = self.model.encoder(imgs_sampled1.to(self.device))
+            mu2, _ = self.model.encoder(imgs_sampled2.to(self.device))    
+
+        print(mu1)
+        print(mu2)
+
+        z_diff = torch.abs(torch.sub(mu1, mu2))
+
+        print(z_diff)
+
+        z_diff_b = torch.mean(z_diff, 1, True)
+
+        print(z_diff_b)
 
 
     def _mutual_information_gap(self, sorted_mut_info, lat_sizes, storer=None):
