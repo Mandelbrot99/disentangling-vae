@@ -129,6 +129,9 @@ class Evaluator:
         except AttributeError:
             raise ValueError("Dataset needs to have known true factors of variations to compute the metric. This does not seem to be the case for {}".format(type(dataloader.__dict__["dataset"]).__name__))
 
+        print(self._disentanglement_metric(10, lat_sizes))
+
+
         self.logger.info("Computing the empirical distribution q(z|x).")
         samples_zCx, params_zCx = self._compute_q_zCx(dataloader)
         len_dataset, latent_dim = samples_zCx.shape
@@ -157,6 +160,21 @@ class Evaluator:
         torch.save(metric_helpers, os.path.join(self.save_dir, METRIC_HELPERS_FILE))
 
         return metrics
+
+
+    def _disentanglement_metric(self, sample_size, lat_sizes):
+        """len(lat_sizes)
+        Compute the disentanglement metric score as proposed in the original paper
+        """
+        #sample random latent factor that is to be kept fixed
+        y = np.random.randint(lat.sizes.size, 1)
+        y_lat = np.random.randint(lat_sizes[y], size=sample_size)
+
+        samples = np.zeros((sample_size, lat_sizes.size))
+        for i, lat_size in enumerate(lat_sizes):
+            samples[:, i] = y_lat if i == y else np.random.randint(lat_size, size=sample_size) 
+
+        print(samples)
 
     def _mutual_information_gap(self, sorted_mut_info, lat_sizes, storer=None):
         """Compute the mutual information gap as in [1].
