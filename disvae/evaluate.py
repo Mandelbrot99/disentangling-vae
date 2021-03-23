@@ -174,6 +174,8 @@ class Evaluator:
         samples1 = np.zeros((sample_size, lat_sizes.size))
         samples2 = np.zeros((sample_size, lat_sizes.size))
 
+        print(y)
+        print(y_lat)
         for i, lat_size in enumerate(lat_sizes):
             samples1[:, i] = y_lat if i == y else np.random.randint(lat_size, size=sample_size) 
             samples2[:, i] = y_lat if i == y else np.random.randint(lat_size, size=sample_size)
