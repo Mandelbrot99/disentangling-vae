@@ -126,10 +126,11 @@ class Evaluator:
         try:
             lat_sizes = dataloader.dataset.lat_sizes
             lat_names = dataloader.dataset.lat_names
+            lat_imgs = dataloader.dataset.imgs
         except AttributeError:
             raise ValueError("Dataset needs to have known true factors of variations to compute the metric. This does not seem to be the case for {}".format(type(dataloader.__dict__["dataset"]).__name__))
 
-        self._disentanglement_metric(10, lat_sizes)
+        self._disentanglement_metric(10, lat_sizes, lat_imgs)
 
 
         self.logger.info("Computing the empirical distribution q(z|x).")
@@ -162,7 +163,7 @@ class Evaluator:
         return metrics
 
 
-    def _disentanglement_metric(self, sample_size, lat_sizes):
+    def _disentanglement_metric(self, sample_size, lat_sizes, imgs):
         """len(lat_sizes)
         Compute the disentanglement metric score as proposed in the original paper
         """
@@ -176,6 +177,15 @@ class Evaluator:
             samples[:, i] = y_lat if i == y else np.random.randint(lat_size, size=sample_size) 
 
         print(samples)
+
+
+        latents_bases = np.concatenate((lat_sizes[::-1].cumprod()[::-1][1:],
+                                np.array([1,])))
+
+        latent_indices = np.dot(samples, latents_bases).astype(int)
+        imgs_sampled = imgs[latent_indices]
+
+        print(imgs_sampled)
 
     def _mutual_information_gap(self, sorted_mut_info, lat_sizes, storer=None):
         """Compute the mutual information gap as in [1].
