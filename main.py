@@ -225,7 +225,7 @@ def main(args):
 
         # SAVE MODEL AND EXPERIMENT INFORMATION
         save_model(trainer.model, exp_dir, metadata=vars(args))
-
+    print("No test?", args.no_test)
     if args.is_metrics or not args.no_test:
         model = load_model(exp_dir, is_gpu=not args.no_cuda)
         metadata = load_metadata(exp_dir)
