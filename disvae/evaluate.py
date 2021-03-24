@@ -168,6 +168,7 @@ class Evaluator:
 
     def _disentanglement_metric(self, sample_size, lat_sizes, imgs, n_epochs=100):
         #compute data for linear classifier
+        self.device = torch.device("cpu")
         X_train, Y_train =  self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
         X_train.unsqueeze_(0)
         Y_train.unsqueeze_(0)
