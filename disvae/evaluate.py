@@ -183,7 +183,7 @@ class Evaluator:
                 Y_test.append(y)
         print(X_train)
         print(Y_train)
-        latent_dim = len(Y[0])
+        latent_dim = len(Y_test[0])
         model = LinearModel(latent_dim)
 
         criterion = torch.nn.BCEWithLogitsLoss()
@@ -216,8 +216,7 @@ class Evaluator:
         """
         #sample random latent factor that is to be kept fixed
 
-        for i in range(10):
-            print(np.random.randint(lat_sizes.size, size=1))
+        
         
         y = np.random.randint(lat_sizes.size, size=1)
         #print(y)
