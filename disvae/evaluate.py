@@ -181,11 +181,11 @@ class Evaluator:
         for i in range(100):
             x,y = self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
             X_train = torch.cat((X_train, x.unsqueeze_(0)), 0)
-            Y_train = torch.cat((Y_train, y), 1)
+            Y_train = torch.cat((Y_train, y), 0)
             if i <= 30:
                 x,y = self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
                 X_test = torch.cat((X_test, x.unsqueeze_(0)), 0)
-                Y_test = torch.cat((Y_test, y), 1)
+                Y_test = torch.cat((Y_test, y), 0)
     
         
         #print(X_train.shape)
