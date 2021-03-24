@@ -192,7 +192,7 @@ class Evaluator:
         model.train()
 
         criterion = torch.nn.NLLLoss()
-        optim = torch.optim.Adam(model.parameters())
+        optim = torch.optim.Adam(model.parameters(), lr=0.01)
         
         print("training the classifier..")
         for e in range(n_epochs):

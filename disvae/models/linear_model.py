@@ -9,8 +9,8 @@ class LinearModel(nn.Module):
         
         # Fully connected layer
         self.lin = nn.Linear(input_dim, output_dim)
-        self.log_softmax = torch.nn.LogSoftmax(dim=1)
+        self.log_softmax = torch.nn.LogSoftmax()
 
 
     def forward(self, x):
-        return self.lin(x)
+        return self.log_softmax(self.lin(x))
