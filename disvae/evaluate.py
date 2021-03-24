@@ -187,10 +187,7 @@ class Evaluator:
                 X_test = torch.cat((X_test, x.unsqueeze_(0)), 0)
                 Y_test = torch.cat((Y_test, y.unsqueeze_(0)), 0)
     
-        X_train.to(self.device)
-        Y_train.to(self.device)
-        X_test.to(self.device)
-        Y_test.to(self.device)
+        
         print(X_train.shape)
         print(X_train)
 
@@ -205,7 +202,16 @@ class Evaluator:
         optim = torch.optim.Adam(model.parameters())
         print("training the classifier..")
         for e in range(n_epochs):
+            X_train.to(self.device)
+            Y_train.to(self.device)
+            X_test.to(self.device)
+            Y_test.to(self.device)
+
             pred = model(X_train)
+            print(next(model.parameters()).device)
+            print(Y_train.get_device())
+            print(pred.get_device())
+
             loss = criterion(pred, Y_train)
             loss.backward()
             optim.step()
@@ -221,7 +227,7 @@ class Evaluator:
             pred_train = model(X_train)
             pred_test = model(X_test)
             train_acc = np.mean(Y_train == pred_train)
-            train_acc = np.mean(Y_test == pred_test)
+            test_acc = np.mean(Y_test == pred_test)
 
         print("Training accuracy:", train_acc)
         print("Test accuracy:", test_acc)
