@@ -205,13 +205,14 @@ class Evaluator:
             print("Device pre change:", self.device)
             print("Model device: ", next(model.parameters()).device)
             print("Y_train device: ",Y_train.device)
-            print("Rediction device", pred.device)
+            
             X_train.to(self.device)
             Y_train.to(self.device)
             X_test.to(self.device)
             Y_test.to(self.device)
 
             pred = model(X_train)
+            print("Rediction device", pred.device)
             pred.to(self.device) ##why is this necessary?????
             print("Device:", self.device)
             print("Model device: ", next(model.parameters()).device)
