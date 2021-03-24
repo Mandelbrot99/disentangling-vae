@@ -202,6 +202,10 @@ class Evaluator:
         optim = torch.optim.Adam(model.parameters())
         print("training the classifier..")
         for e in range(n_epochs):
+            print("Device pre change:", self.device)
+            print("Model device: ", next(model.parameters()).device)
+            print("Y_train device: ",Y_train.device)
+            print("Rediction device", pred.device)
             X_train.to(self.device)
             Y_train.to(self.device)
             X_test.to(self.device)
@@ -209,10 +213,10 @@ class Evaluator:
 
             pred = model(X_train)
             pred.to(self.device) ##why is this necessary?????
-            Y_train.to(self.device)
-            print(next(model.parameters()).device)
-            print(Y_train.device)
-            print(pred.device)
+            print("Device:", self.device)
+            print("Model device: ", next(model.parameters()).device)
+            print("Y_train device: ",Y_train.device)
+            print("Rediction device", pred.device)
 
             loss = criterion(pred, Y_train)
             loss.backward()
