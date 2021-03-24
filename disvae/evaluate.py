@@ -229,8 +229,8 @@ class Evaluator:
             pred_train = pred_train.to(self.device) 
             pred_test = model(X_test)
             pred_test = pred_test.to(self.device) 
-            train_acc = np.mean(Y_train == pred_train)
-            test_acc = np.mean(Y_test == pred_test)
+            train_acc = torch.mean(Y_train == pred_train)
+            test_acc = torch.mean(Y_test == pred_test)
 
         print("Training accuracy:", train_acc)
         print("Test accuracy:", test_acc)
