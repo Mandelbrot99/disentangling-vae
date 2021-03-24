@@ -222,15 +222,20 @@ class Evaluator:
                 test_loss = criterion(outputs_test, Y_test)
                 print(f'In this epoch {e+1}/{n_epochs}, Training loss: {loss.item():.4f}, Test loss: {test_loss.item():.4f}')
         
-        
+        model.eval()
         with torch.no_grad():
-            model.eval()
+            
             pred_train = model(X_train)
             pred_train = pred_train.to(self.device) 
             pred_test = model(X_test)
             pred_test = pred_test.to(self.device) 
-            train_acc = torch.mean(Y_train == pred_train)
-            test_acc = torch.mean(Y_test == pred_test)
+            print(Y_train, pred_test)
+            print(Y_train == pred_test)
+            _, predictions = pred_test.max(1)
+            print(predictions)
+            #train_acc = torch.mean(Y_train == pred_train)
+            test_acc = (Y_test == pred_test).sum()
+            test_acc/= predictions.size(0)
 
         print("Training accuracy:", train_acc)
         print("Test accuracy:", test_acc)
