@@ -194,48 +194,48 @@ class Evaluator:
         #print(Y_train)
         
         #print(latent_dim)
-        model = LinearModel(latent_dim)
+        model = LinearModel(latent_dim,len(lat_sizes))
         model.to(self.device)
         model.train()
 
-        criterion = torch.nn.BCEWithLogitsLoss()
+        criterion = torch.nn.NLLLoss()
         optim = torch.optim.Adam(model.parameters())
         print("training the classifier..")
         for e in range(n_epochs):
-            
+            optim.zero_grad()
             X_train = X_train.to(self.device).float()
             Y_train = Y_train.to(self.device).float()
             X_test = X_test.to(self.device).float()
             Y_test = Y_test.to(self.device).float()
 
-            pred = model(X_train)         
-            pred.to(self.device) ##why is this necessary?????
+            scores_train = model(X_train)         
+            #pred.to(self.device) ##why is this necessary?????
 
 
-            loss = criterion(pred, Y_train)
+            loss = criterion(scores_train, Y_train)
             loss.backward()
             optim.step()
-            print("test", e)
+            
             if (e+1) % 10 == 0:
-                outputs_test = model(X_test)
-                outputs_test.to(self.device)        #why necessary??
-                test_loss = criterion(outputs_test, Y_test)
+                scores_test = model(X_test)
+                #outputs_test.to(self.device)        #why necessary??
+                test_loss = criterion(scores_test, Y_test)
                 print(f'In this epoch {e+1}/{n_epochs}, Training loss: {loss.item():.4f}, Test loss: {test_loss.item():.4f}')
         
         model.eval()
         with torch.no_grad():
             
-            pred_train = model(X_train)
-            pred_train = pred_train.to(self.device) 
-            pred_test = model(X_test)
-            pred_test = pred_test.to(self.device) 
-            print(Y_train, pred_test)
-            print(Y_train == pred_test)
-            _, predictions = pred_test.max(1)
-            print(predictions)
+            scores_train = model(X_train)
+            scores_test = model(X_test)
+ 
+            _, prediction_train = scores_train.max(1)
+            _, prediction_test = scores_test.max(1)
+
+            train_acc = (prediction_train==Y_train).sum()
+            train_acc/= len(X_train)
             #train_acc = torch.mean(Y_train == pred_train)
-            test_acc = (Y_test == pred_test).sum()
-            test_acc/= predictions.size(0)
+            test_acc = (prediction_test==Y_test).sum()
+            test_acc/= len(X_test)
 
         print("Training accuracy:", train_acc)
         print("Test accuracy:", test_acc)
