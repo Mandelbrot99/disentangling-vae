@@ -13,7 +13,7 @@ import torch
 from disvae.models.losses import get_loss_f
 from disvae.utils.math import log_density_gaussian
 from disvae.utils.modelIO import save_metadata
-from disva.models.linear_model import LinearModel
+from disvae.models.linear_model import LinearModel
 
 
 
