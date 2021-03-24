@@ -133,7 +133,7 @@ class Evaluator:
         except AttributeError:
             raise ValueError("Dataset needs to have known true factors of variations to compute the metric. This does not seem to be the case for {}".format(type(dataloader.__dict__["dataset"]).__name__))
         
-        self._disentanglement_metric(32, lat_sizes, lat_imgs)
+        self._disentanglement_metric(7, lat_sizes, lat_imgs, n_epochs=40)
 
 
         self.logger.info("Computing the empirical distribution q(z|x).")
@@ -186,20 +186,14 @@ class Evaluator:
                 x,y = self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
                 X_test = torch.cat((X_test, x.unsqueeze_(0)), 0)
                 Y_test = torch.cat((Y_test, y), 0)
-    
-        
-        #print(X_train.shape)
-        #print(X_train)
 
-        #print(Y_train)
-        
-        #print(latent_dim)
         model = LinearModel(latent_dim,len(lat_sizes))
         model.to(self.device)
         model.train()
 
         criterion = torch.nn.NLLLoss()
         optim = torch.optim.Adam(model.parameters())
+        
         print("training the classifier..")
         for e in range(n_epochs):
             optim.zero_grad()
@@ -208,16 +202,18 @@ class Evaluator:
             X_test = X_test.to(self.device)
             Y_test = Y_test.to(self.device)
 
-            scores_train = model(X_train)         
+            scores_train = model(X_train)   
+
+            print("X train: ", X_train)
+            print("Scores train: ", scores_train)
+            print("Y train: ",  Y_train)      
 
             loss = criterion(scores_train, Y_train)
             loss.backward()
             optim.step()
             
             if (e+1) % 10 == 0:
-                scores_test = model(X_test)
-                
-                
+                scores_test = model(X_test)   
                 test_loss = criterion(scores_test, Y_test)
                 print(f'In this epoch {e+1}/{n_epochs}, Training loss: {loss.item():.4f}, Test loss: {test_loss.item():.4f}')
         
@@ -231,8 +227,6 @@ class Evaluator:
             _, prediction_test = scores_test.max(1)
 
             train_acc = (prediction_train==Y_train).sum().float()/len(X_train)
-            train_acc/= len(X_train)
-            #train_acc = torch.mean(Y_train == pred_train)
             test_acc = (prediction_test==Y_test).sum().float()/len(X_test)
             
 
