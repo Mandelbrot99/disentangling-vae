@@ -176,7 +176,8 @@ class Evaluator:
         X_test.unsqueeze_(0)
         Y_test.unsqueeze_(0)
 
-        print(X_train.shape)
+        latent_dim = X_train.shape[1]
+
         for i in range(100):
             x,y = self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
             X_train = torch.cat((X_train, x.unsqueeze_(0)), 0)
@@ -186,14 +187,15 @@ class Evaluator:
                 X_test = torch.cat((X_test, x.unsqueeze_(0)), 0)
                 Y_test = torch.cat((Y_test, y.unsqueeze_(0)), 0)
     
-        
+        X_train.to(self.device)
+        Y_train.to(self.device)
+        X_test.to(self.device)
+        Y_test.to(self.device)
         print(X_train.shape)
         print(X_train)
 
         print(Y_train)
-        latent_dim = len(Y_test[0])
-        print(latent_dim)
-        latent_dim = X_train.shape[1]
+        
         print(latent_dim)
         model = LinearModel(latent_dim)
         model.to(self.device)
