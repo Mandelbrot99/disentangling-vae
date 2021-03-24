@@ -168,23 +168,32 @@ class Evaluator:
 
     def _disentanglement_metric(self, sample_size, lat_sizes, imgs, n_epochs=100):
         #compute data for linear classifier
-        X_train = []
-        Y_train = []
+        X_tr = []
+        Y_tr = []
 
-        X_test = []
-        Y_test = []
+        X_te = []
+        Y_te = []
         for i in range(100):
             x,y = self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
-            X_train.append(x)
-            Y_train.append(y)
+            X_tr.append(x)
+            Y_tr.append(y)
             if i <= 30:
                 x,y = self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
-                X_test.append(x)
-                Y_test.append(y)
+                X_te.append(x)
+                Y_te.append(y)
+        X_train = torch.FloatTensor(X_tr)
+        Y_train = torch.FloatTensor(Y_tr)
+        X_test = torch.FloatTensor(X_te)
+        Y_test = torch.FloatTensor(Y_te)
+        
+        print(type(X_train))
         print(X_train)
+
         print(Y_train)
         latent_dim = len(Y_test[0])
         model = LinearModel(latent_dim)
+        model.to(self.device)
+        model.train()
 
         criterion = torch.nn.BCEWithLogitsLoss()
         optim = torch.optim.Adam(model.parameters())
@@ -202,6 +211,7 @@ class Evaluator:
         
         
         with torch.no_grad():
+            model.eval()
             pred_train = model(X_train)
             pred_test = model(X_test)
             train_acc = np.mean(Y_train == pred_train)
