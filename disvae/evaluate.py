@@ -203,10 +203,10 @@ class Evaluator:
         print("training the classifier..")
         for e in range(n_epochs):
             optim.zero_grad()
-            X_train = X_train.to(self.device).float()
-            Y_train = Y_train.to(self.device).float()
-            X_test = X_test.to(self.device).float()
-            Y_test = Y_test.to(self.device).float()
+            X_train = X_train.to(self.device)
+            Y_train = Y_train.to(self.device)
+            X_test = X_test.to(self.device)
+            Y_test = Y_test.to(self.device)
 
             scores_train = model(X_train)         
             #pred.to(self.device) ##why is this necessary?????
@@ -218,6 +218,7 @@ class Evaluator:
             
             if (e+1) % 10 == 0:
                 scores_test = model(X_test)
+                print(scores_test)
                 #outputs_test.to(self.device)        #why necessary??
                 test_loss = criterion(scores_test, Y_test)
                 print(f'In this epoch {e+1}/{n_epochs}, Training loss: {loss.item():.4f}, Test loss: {test_loss.item():.4f}')
