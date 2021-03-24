@@ -8,7 +8,7 @@ class LinearModel(nn.Module):
         # Fully connected layer
         self.lin1 = nn.Linear(input_dim, hidden_dim)
         self.lin2 = nn.Linear(hidden_dim, output_dim)
-        self.log_softmax = torch.nn.LogSoftmax()
+        self.log_softmax = torch.nn.LogSoftmax() #correct dimension? dim =1 gives negative NLL
 
 
     def forward(self, x):

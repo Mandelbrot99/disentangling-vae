@@ -133,7 +133,8 @@ class Evaluator:
         except AttributeError:
             raise ValueError("Dataset needs to have known true factors of variations to compute the metric. This does not seem to be the case for {}".format(type(dataloader.__dict__["dataset"]).__name__))
         
-        self._disentanglement_metric(7, lat_sizes, lat_imgs, n_epochs=2000)
+        self.logger.info("Computing the disentanglemtn metric")
+        accuracy = self._disentanglement_metric(7, lat_sizes, lat_imgs, n_epochs=40)
 
 
         self.logger.info("Computing the empirical distribution q(z|x).")
@@ -160,39 +161,43 @@ class Evaluator:
         mig = self._mutual_information_gap(sorted_mut_info, lat_sizes, storer=metric_helpers)
         aam = self._axis_aligned_metric(sorted_mut_info, storer=metric_helpers)
 
-        metrics = {'MIG': mig.item(), 'AAM': aam.item()}
+        metrics = {'DM': accuracy.item(), 'MIG': mig.item(), 'AAM': aam.item()}
         torch.save(metric_helpers, os.path.join(self.save_dir, METRIC_HELPERS_FILE))
 
         return metrics
 
 
-    def _disentanglement_metric(self, sample_size, lat_sizes, imgs, n_epochs=100):
-        #compute data for linear classifier
+    def _disentanglement_metric(self, sample_size, lat_sizes, imgs, n_epochs=50, dataset_size = 500, hidden_dim = 256):
+
+        #compute training- and test data for linear classifier
         X_train, Y_train =  self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
         X_train.unsqueeze_(0)
 
         X_test, Y_test =  self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
         X_test.unsqueeze_(0)
 
+        #latent dim = output dimension of linear classifier
         latent_dim = X_train.shape[1]
-
-        for i in range(100):
+        
+        #generate dataset_size many training data points and 20% of that test data points
+        for i in range(dataset_size):
             x,y = self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
             X_train = torch.cat((X_train, x.unsqueeze_(0)), 0)
             Y_train = torch.cat((Y_train, y), 0)
-            if i <= 30:
+            if i <= int(dataset_size*0.2):
                 x,y = self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
                 X_test = torch.cat((X_test, x.unsqueeze_(0)), 0)
                 Y_test = torch.cat((Y_test, y), 0)
 
-        model = LinearModel(latent_dim,128,len(lat_sizes))
+        model = LinearModel(latent_dim,hidden_dim,len(lat_sizes))
         model.to(self.device)
         model.train()
 
+        #log softmax with NLL loss 
         criterion = torch.nn.NLLLoss()
         optim = torch.optim.Adam(model.parameters(), lr=0.01)
         
-        print("training the classifier..")
+        print("training the linear classifier...")
         for e in range(n_epochs):
             optim.zero_grad()
             X_train = X_train.to(self.device)
@@ -201,7 +206,6 @@ class Evaluator:
             Y_test = Y_test.to(self.device)
 
             scores_train = model(X_train)   
-
             loss = criterion(scores_train, Y_train)
             loss.backward()
             optim.step()
@@ -226,6 +230,7 @@ class Evaluator:
 
         print("Training accuracy:", train_acc.item())
         print("Test accuracy:", test_acc.item())
+        return test_acc
 
     def _compute_z_b_diff_y(self, sample_size, lat_sizes, imgs):
         """
@@ -237,7 +242,7 @@ class Evaluator:
         y = np.random.randint(lat_sizes.size, size=1)
         y_lat = np.random.randint(lat_sizes[y], size=sample_size)
 
-        #sample to sets of latent representations such that the yth 
+        #sample to sets of data generative factors such that the yth value is the same accross the two sets
         samples1 = np.zeros((sample_size, lat_sizes.size))
         samples2 = np.zeros((sample_size, lat_sizes.size))
 
@@ -250,9 +255,12 @@ class Evaluator:
 
         latent_indices1 = np.dot(samples1, latents_bases).astype(int)
         latent_indices2 = np.dot(samples2, latents_bases).astype(int)
+
+        #use the data generative factors to simulate two sets of images from the dataset
         imgs_sampled1 = torch.from_numpy(imgs[latent_indices1]).unsqueeze_(1).float()
         imgs_sampled2 = torch.from_numpy(imgs[latent_indices2]).unsqueeze_(1).float()
 
+        #calculate the expectation values of the normal distributions in the latent representation for the given images
         with torch.no_grad():
             mu1, _ = self.model.encoder(imgs_sampled1.to(self.device))
             mu2, _ = self.model.encoder(imgs_sampled2.to(self.device))    
