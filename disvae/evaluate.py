@@ -210,8 +210,6 @@ class Evaluator:
 
             scores_train = model(X_train)         
             #pred.to(self.device) ##why is this necessary?????
-            print(scores_train)
-            print(Y_train)
 
             loss = criterion(scores_train, Y_train)
             loss.backward()
@@ -219,7 +217,7 @@ class Evaluator:
             
             if (e+1) % 10 == 0:
                 scores_test = model(X_test)
-                print(scores_test)
+                
                 #outputs_test.to(self.device)        #why necessary??
                 test_loss = criterion(scores_test, Y_test)
                 print(f'In this epoch {e+1}/{n_epochs}, Training loss: {loss.item():.4f}, Test loss: {test_loss.item():.4f}')
@@ -234,6 +232,7 @@ class Evaluator:
             _, prediction_test = scores_test.max(1)
 
             train_acc = (prediction_train==Y_train).sum()
+            print(train_acc)
             train_acc/= len(X_train)
             #train_acc = torch.mean(Y_train == pred_train)
             test_acc = (prediction_test==Y_test).sum()
