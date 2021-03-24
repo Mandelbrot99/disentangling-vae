@@ -209,6 +209,7 @@ class Evaluator:
 
             pred = model(X_train)
             pred.to(self.device) ##why is this necessary?????
+            Y_train.to(self.device)
             print(next(model.parameters()).device)
             print(Y_train.device)
             print(pred.device)
