@@ -169,12 +169,12 @@ class Evaluator:
     def _disentanglement_metric(self, sample_size, lat_sizes, imgs, n_epochs=100):
         #compute data for linear classifier
         X_train, Y_train =  self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
-        torch.unsqueeze(X_train, 0)
-        torch.unsqueeze(Y_train, 0)
+        X_train.unsqueeze_(0)
+        Y_train.unsqueeze_(0)
 
         X_test, Y_test =  self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
-        torch.unsqueeze(X_test, 0)
-        torch.unsqueeze(Y_test, 0)
+        X_test.unsqueeze_(0)
+        Y_test.unsqueeze_(0)
 
         print(X_train.shape)
         for i in range(100):
