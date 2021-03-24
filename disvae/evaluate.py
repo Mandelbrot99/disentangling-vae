@@ -168,7 +168,6 @@ class Evaluator:
 
     def _disentanglement_metric(self, sample_size, lat_sizes, imgs, n_epochs=100):
         #compute data for linear classifier
-        self.device = torch.device("cpu")
         X_train, Y_train =  self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
         X_train.unsqueeze_(0)
         Y_train.unsqueeze_(0)
@@ -207,10 +206,10 @@ class Evaluator:
             print("Model device: ", next(model.parameters()).device)
             print("Y_train device: ",Y_train.device)
             
-            X_train.to(self.device)
-            Y_train.to(self.device)
-            X_test.to(self.device)
-            Y_test.to(self.device)
+            X_train = X_train.to(self.device)
+            Y_train = Y_train.to(self.device)
+            X_test = X_test.to(self.device)
+            Y_test = Y_test.to(self.device)
 
             pred = model(X_train)
             print("Rediction device", pred.device)
@@ -234,9 +233,9 @@ class Evaluator:
         with torch.no_grad():
             model.eval()
             pred_train = model(X_train)
-            pred_train.to(self.device) 
+            pred_train = pred_train.to(self.device) 
             pred_test = model(X_test)
-            pred_test.to(self.device) 
+            pred_test = pred_test.to(self.device) 
             train_acc = np.mean(Y_train == pred_train)
             test_acc = np.mean(Y_test == pred_test)
 
