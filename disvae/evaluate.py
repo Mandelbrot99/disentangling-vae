@@ -129,11 +129,7 @@ class Evaluator:
             lat_imgs = dataloader.dataset.imgs
         except AttributeError:
             raise ValueError("Dataset needs to have known true factors of variations to compute the metric. This does not seem to be the case for {}".format(type(dataloader.__dict__["dataset"]).__name__))
-        a,b =self._compute_q_zCx(dataloader)
-        print(a)
-        print("uijehbfgsfg")
-        print(b)
-        print("dis metric:")
+        
         self._disentanglement_metric(32, lat_sizes, lat_imgs)
 
 
@@ -172,7 +168,12 @@ class Evaluator:
         Compute the disentanglement metric score as proposed in the original paper
         """
         #sample random latent factor that is to be kept fixed
+
+        for i in range(10):
+            print(np.random.randint(lat_sizes.size, size=1))
+        
         y = np.random.randint(lat_sizes.size, size=1)
+        print(y)
         y_lat = np.random.randint(lat_sizes[y], size=sample_size)
 
         samples1 = np.zeros((sample_size, lat_sizes.size))
