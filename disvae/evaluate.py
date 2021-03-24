@@ -133,7 +133,7 @@ class Evaluator:
         except AttributeError:
             raise ValueError("Dataset needs to have known true factors of variations to compute the metric. This does not seem to be the case for {}".format(type(dataloader.__dict__["dataset"]).__name__))
         
-        self._disentanglement_metric(7, lat_sizes, lat_imgs, n_epochs=200)
+        self._disentanglement_metric(7, lat_sizes, lat_imgs, n_epochs=2000)
 
 
         self.logger.info("Computing the empirical distribution q(z|x).")
@@ -230,27 +230,20 @@ class Evaluator:
     def _compute_z_b_diff_y(self, sample_size, lat_sizes, imgs):
         """
         Compute the disentanglement metric score as proposed in the original paper
+        reference: https://github.com/deepmind/dsprites-dataset/blob/master/dsprites_reloading_example.ipynb
         """
+        
         #sample random latent factor that is to be kept fixed
-
-        
-        
         y = np.random.randint(lat_sizes.size, size=1)
-        #print(y)
         y_lat = np.random.randint(lat_sizes[y], size=sample_size)
 
+        #sample to sets of latent representations such that the yth 
         samples1 = np.zeros((sample_size, lat_sizes.size))
         samples2 = np.zeros((sample_size, lat_sizes.size))
 
-        #print(y)
-        #print(y_lat)
         for i, lat_size in enumerate(lat_sizes):
             samples1[:, i] = y_lat if i == y else np.random.randint(lat_size, size=sample_size) 
             samples2[:, i] = y_lat if i == y else np.random.randint(lat_size, size=sample_size)
-
-        #print(samples1)
-        #print(samples2)
-
 
         latents_bases = np.concatenate((lat_sizes[::-1].cumprod()[::-1][1:],
                                 np.array([1,])))
@@ -260,23 +253,16 @@ class Evaluator:
         imgs_sampled1 = torch.from_numpy(imgs[latent_indices1]).unsqueeze_(1).float()
         imgs_sampled2 = torch.from_numpy(imgs[latent_indices2]).unsqueeze_(1).float()
 
-        #print(imgs_sampled1)
-        #print(imgs_sampled1.shape)
         with torch.no_grad():
             mu1, _ = self.model.encoder(imgs_sampled1.to(self.device))
             mu2, _ = self.model.encoder(imgs_sampled2.to(self.device))    
 
-        #print(mu1)
-        #print(mu2)
-
         z_diff = torch.abs(torch.sub(mu1, mu2))
-
-        #print(z_diff)
-
         z_diff_b = torch.mean(z_diff, 0)
 
-        #print(z_diff_b)
         return z_diff_b, torch.from_numpy(y)
+
+
 
     def _mutual_information_gap(self, sorted_mut_info, lat_sizes, storer=None):
         """Compute the mutual information gap as in [1].
