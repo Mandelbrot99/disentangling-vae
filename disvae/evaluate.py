@@ -168,23 +168,20 @@ class Evaluator:
 
     def _disentanglement_metric(self, sample_size, lat_sizes, imgs, n_epochs=100):
         #compute data for linear classifier
-        X_tr = []
-        Y_tr = []
+        X_train, Y_train =  self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
 
-        X_te = []
-        Y_te = []
+        X_test, Y_test =  self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
+
+        print(X_train.shape)
         for i in range(100):
             x,y = self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
-            X_tr.append(x)
-            Y_tr.append(y)
+            X_train = torch.cat((X_train, x), 0)
+            Y_train = torch.cat((Y_train, y), 0)
             if i <= 30:
                 x,y = self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
-                X_te.append(x)
-                Y_te.append(y)
-        X_train = torch.FloatTensor(X_tr)
-        Y_train = torch.FloatTensor(Y_tr)
-        X_test = torch.FloatTensor(X_te)
-        Y_test = torch.FloatTensor(Y_te)
+                X_test = torch.cat((X_test, x), 0)
+                Y_test = torch.cat((Y_test, y), 0)
+    
         
         print(type(X_train))
         print(X_train)
@@ -266,7 +263,7 @@ class Evaluator:
 
         #print(z_diff)
 
-        z_diff_b = torch.mean(z_diff, 0, True)
+        z_diff_b = torch.mean(z_diff, 0)
 
         #print(z_diff_b)
         return z_diff_b, y
