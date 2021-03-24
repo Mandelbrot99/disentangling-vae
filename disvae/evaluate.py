@@ -210,7 +210,8 @@ class Evaluator:
 
             scores_train = model(X_train)         
             #pred.to(self.device) ##why is this necessary?????
-
+            print(scores_train)
+            print(Y_train)
 
             loss = criterion(scores_train, Y_train)
             loss.backward()
