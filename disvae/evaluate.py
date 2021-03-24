@@ -13,6 +13,9 @@ import torch
 from disvae.models.losses import get_loss_f
 from disvae.utils.math import log_density_gaussian
 from disvae.utils.modelIO import save_metadata
+from disva.models.linear_model import LinearModel
+
+
 
 TEST_LOSSES_FILE = "test_losses.log"
 METRICS_FILENAME = "metrics.log"
@@ -163,8 +166,52 @@ class Evaluator:
         return metrics
 
 
-    def _disentanglement_metric(self, sample_size, lat_sizes, imgs):
-        """len(lat_sizes)
+    def _disentanglement_metric(self, sample_size, lat_sizes, imgs, n_epochs=100):
+        #compute data for linear classifier
+        X_train = []
+        Y_train = []
+
+        X_test = []
+        Y_test = []
+        for i in range(100):
+            x,y = self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
+            X_train.append(x)
+            Y_train.append(y)
+            if i <= 30:
+                x,y = self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
+                X_test.append(x)
+                Y_test.append(y)
+        print(X_train)
+        print(Y_train)
+        latent_dim = len(Y[0])
+        model = LinearModel(latent_dim)
+
+        criterion = torch.nn.BCEWithLogitsLoss()
+        optim = torch.optim.Adam(model.parameters())
+        print("training the classifier..")
+        for e in range(n_epochs):
+            pred = model(X_train)
+            loss = criterion(pred, Y_train)
+            loss.backward()
+            optim.step()
+
+            if (e+1) % 10 == 0:
+                outputs_test = model(X_test)
+                test_loss = criterion(outputs_test, Y_test)
+                print(f'In this epoch {e+1}/{n_epochs}, Training loss: {loss.item():.4f}, Test loss: {test_loss.item():.4f}')
+        
+        
+        with torch.no_grad():
+            pred_train = model(X_train)
+            pred_test = model(X_test)
+            train_acc = np.mean(Y_train == pred_train)
+            train_acc = np.mean(Y_test == pred_test)
+
+        print("Training accuracy:", train_acc)
+        print("Test accuracy:", test_acc)
+
+    def _compute_z_b_diff_y(self, sample_size, lat_sizes, imgs):
+        """
         Compute the disentanglement metric score as proposed in the original paper
         """
         #sample random latent factor that is to be kept fixed
@@ -173,7 +220,7 @@ class Evaluator:
             print(np.random.randint(lat_sizes.size, size=1))
         
         y = np.random.randint(lat_sizes.size, size=1)
-        print(y)
+        #print(y)
         y_lat = np.random.randint(lat_sizes[y], size=sample_size)
 
         samples1 = np.zeros((sample_size, lat_sizes.size))
@@ -185,8 +232,8 @@ class Evaluator:
             samples1[:, i] = y_lat if i == y else np.random.randint(lat_size, size=sample_size) 
             samples2[:, i] = y_lat if i == y else np.random.randint(lat_size, size=sample_size)
 
-        print(samples1)
-        print(samples2)
+        #print(samples1)
+        #print(samples2)
 
 
         latents_bases = np.concatenate((lat_sizes[::-1].cumprod()[::-1][1:],
@@ -203,17 +250,17 @@ class Evaluator:
             mu1, _ = self.model.encoder(imgs_sampled1.to(self.device))
             mu2, _ = self.model.encoder(imgs_sampled2.to(self.device))    
 
-        print(mu1)
-        print(mu2)
+        #print(mu1)
+        #print(mu2)
 
         z_diff = torch.abs(torch.sub(mu1, mu2))
 
-        print(z_diff)
+        #print(z_diff)
 
         z_diff_b = torch.mean(z_diff, 0, True)
 
-        print(z_diff_b)
-
+        #print(z_diff_b)
+        return z_diff_b, y
 
     def _mutual_information_gap(self, sorted_mut_info, lat_sizes, storer=None):
         """Compute the mutual information gap as in [1].
