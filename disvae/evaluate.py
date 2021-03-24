@@ -170,22 +170,22 @@ class Evaluator:
         #compute data for linear classifier
         X_train, Y_train =  self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
         X_train.unsqueeze_(0)
-        Y_train.unsqueeze_(0)
+        #Y_train.unsqueeze_(0)
 
         X_test, Y_test =  self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
         X_test.unsqueeze_(0)
-        Y_test.unsqueeze_(0)
+        #Y_test.unsqueeze_(0)
 
         latent_dim = X_train.shape[1]
 
         for i in range(100):
             x,y = self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
             X_train = torch.cat((X_train, x.unsqueeze_(0)), 0)
-            Y_train = torch.cat((Y_train, y.unsqueeze_(0)), 0)
+            Y_train = torch.cat((Y_train, y), 1)
             if i <= 30:
                 x,y = self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
                 X_test = torch.cat((X_test, x.unsqueeze_(0)), 0)
-                Y_test = torch.cat((Y_test, y.unsqueeze_(0)), 0)
+                Y_test = torch.cat((Y_test, y), 1)
     
         
         #print(X_train.shape)
