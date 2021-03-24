@@ -188,12 +188,12 @@ class Evaluator:
                 Y_test = torch.cat((Y_test, y.unsqueeze_(0)), 0)
     
         
-        print(X_train.shape)
-        print(X_train)
+        #print(X_train.shape)
+        #print(X_train)
 
-        print(Y_train)
+        #print(Y_train)
         
-        print(latent_dim)
+        #print(latent_dim)
         model = LinearModel(latent_dim)
         model.to(self.device)
         model.train()
@@ -209,14 +209,14 @@ class Evaluator:
 
             pred = model(X_train)
             pred.to(self.device) ##why is this necessary?????
-            #print(next(model.parameters()).device)
-            #print(Y_train.device)
-            #print(pred.device)
+            print(next(model.parameters()).device)
+            print(Y_train.device)
+            print(pred.device)
 
             loss = criterion(pred, Y_train)
             loss.backward()
             optim.step()
-
+            print("test", e)
             if (e+1) % 10 == 0:
                 outputs_test = model(X_test)
                 outputs_test.to(self.device)        #why necessary??
