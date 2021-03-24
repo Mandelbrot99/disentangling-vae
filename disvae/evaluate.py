@@ -192,6 +192,9 @@ class Evaluator:
 
         print(Y_train)
         latent_dim = len(Y_test[0])
+        print(latent_dim)
+        latent_dim = X_train.shape[1]
+        print(latent_dim)
         model = LinearModel(latent_dim)
         model.to(self.device)
         model.train()
