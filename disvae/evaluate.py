@@ -170,11 +170,9 @@ class Evaluator:
         #compute data for linear classifier
         X_train, Y_train =  self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
         X_train.unsqueeze_(0)
-        #Y_train.unsqueeze_(0)
 
         X_test, Y_test =  self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
         X_test.unsqueeze_(0)
-        #Y_test.unsqueeze_(0)
 
         latent_dim = X_train.shape[1]
 
@@ -187,7 +185,7 @@ class Evaluator:
                 X_test = torch.cat((X_test, x.unsqueeze_(0)), 0)
                 Y_test = torch.cat((Y_test, y), 0)
 
-        model = LinearModel(latent_dim,len(lat_sizes))
+        model = LinearModel(latent_dim,128,len(lat_sizes))
         model.to(self.device)
         model.train()
 
@@ -203,10 +201,6 @@ class Evaluator:
             Y_test = Y_test.to(self.device)
 
             scores_train = model(X_train)   
-
-            print("X train: ", X_train)
-            print("Scores train: ", scores_train)
-            print("Y train: ",  Y_train)      
 
             loss = criterion(scores_train, Y_train)
             loss.backward()
