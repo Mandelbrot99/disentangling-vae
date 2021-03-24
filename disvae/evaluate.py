@@ -133,7 +133,7 @@ class Evaluator:
         except AttributeError:
             raise ValueError("Dataset needs to have known true factors of variations to compute the metric. This does not seem to be the case for {}".format(type(dataloader.__dict__["dataset"]).__name__))
         
-        self._disentanglement_metric(7, lat_sizes, lat_imgs, n_epochs=40)
+        self._disentanglement_metric(7, lat_sizes, lat_imgs, n_epochs=200)
 
 
         self.logger.info("Computing the empirical distribution q(z|x).")
@@ -230,8 +230,8 @@ class Evaluator:
             test_acc = (prediction_test==Y_test).sum().float()/len(X_test)
             
 
-        print("Training accuracy:", train_acc)
-        print("Test accuracy:", test_acc)
+        print("Training accuracy:", train_acc.item())
+        print("Test accuracy:", test_acc.item())
 
     def _compute_z_b_diff_y(self, sample_size, lat_sizes, imgs):
         """
