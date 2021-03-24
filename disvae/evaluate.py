@@ -209,8 +209,8 @@ class Evaluator:
 
             pred = model(X_train)
             print(next(model.parameters()).device)
-            print(Y_train.get_device())
-            print(pred.get_device())
+            print(Y_train.device)
+            print(pred.device)
 
             loss = criterion(pred, Y_train)
             loss.backward()
