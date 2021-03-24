@@ -133,8 +133,8 @@ class Evaluator:
         except AttributeError:
             raise ValueError("Dataset needs to have known true factors of variations to compute the metric. This does not seem to be the case for {}".format(type(dataloader.__dict__["dataset"]).__name__))
         
-        self.logger.info("Computing the disentanglemtn metric")
-        accuracy = self._disentanglement_metric(7, lat_sizes, lat_imgs, n_epochs=40)
+        self.logger.info("Computing the disentanglement metric")
+        accuracy = self._disentanglement_metric(7, lat_sizes, lat_imgs, n_epochs=70, dataset_size=2000, hidden_dim=512)
 
 
         self.logger.info("Computing the empirical distribution q(z|x).")
@@ -167,7 +167,7 @@ class Evaluator:
         return metrics
 
 
-    def _disentanglement_metric(self, sample_size, lat_sizes, imgs, n_epochs=50, dataset_size = 500, hidden_dim = 256):
+    def _disentanglement_metric(self, sample_size, lat_sizes, imgs, n_epochs=50, dataset_size = 2000, hidden_dim = 256):
 
         #compute training- and test data for linear classifier
         X_train, Y_train =  self._compute_z_b_diff_y(sample_size, lat_sizes, imgs)
