@@ -187,7 +187,7 @@ class Evaluator:
                 self.logger.info("Training PCA...")
                 pca = decomposition.PCA(n_components=10, whiten = True)
                 imgs_pca = np.reshape(imgs, (imgs.shape[0], imgs.shape[1]**2))
-                idx = np.random.randint(len(imgs_pca), size = 10000)
+                idx = np.random.randint(len(imgs_pca), size = 50000)
                 imgs_pca = imgs_pca[idx, :]       #not enough memory for full dataset -> repeat with random subsets               
                 pca.fit(imgs_pca)
                 methods["PCA"] = pca
@@ -197,7 +197,7 @@ class Evaluator:
                 self.logger.info("Training ICA...")
                 ica = decomposition.FastICA(n_components=10)
                 imgs_ica = np.reshape(imgs, (imgs.shape[0], imgs.shape[1]**2))
-                idx = np.random.randint(len(imgs_pca), size = 1000)
+                idx = np.random.randint(len(imgs_pca), size = 1500)
                 imgs_ica = imgs_ica[idx, :]       #not enough memory for full dataset -> repeat with random subsets 
                 ica.fit(imgs_ica)
                 methods["ICA"] = ica
