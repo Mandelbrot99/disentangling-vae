@@ -21,6 +21,7 @@ from disvae.models.linear_model import weight_reset
 from disvae.models.nonlinear_model import NonLinearModel
 
 from sklearn import decomposition
+import wandb
 
 TEST_LOSSES_FILE = "test_losses.log"
 METRICS_FILENAME = "metrics.log"
@@ -131,6 +132,9 @@ class Evaluator:
         ----------
         data_loader: torch.utils.data.DataLoader
         """
+        use_wandb = False
+        if use_wandb:
+            wandb.init(project="atmlbetavae", config= {"latent_size": 10, "classifier_hidden_size": 512, "sample_size": 300, "PCA_training_size" : 5000, "ICA_training_size" : 1000})
         try:
             lat_sizes = dataloader.dataset.lat_sizes
             lat_names = dataloader.dataset.lat_names
@@ -139,11 +143,13 @@ class Evaluator:
             raise ValueError("Dataset needs to have known true factors of variations to compute the metric. This does not seem to be the case for {}".format(type(dataloader.__dict__["dataset"]).__name__))
         
         self.logger.info("Computing the disentanglement metric")
-        accuracies = self._disentanglement_metric(["VAE", "PCA", "ICA"], 300, lat_sizes, lat_imgs, n_epochs=150, dataset_size=1500, hidden_dim=256, use_non_linear=False)
+        accuracies = self._disentanglement_metric(["VAE", "PCA", "ICA"], 300, lat_sizes, lat_imgs, n_epochs=150, dataset_size=1500, hidden_dim=512, use_non_linear=False)
         #sample size is key for VAE, for sample size 50 only 88% accuarcy, compared to 95 for 200 sample sze
         #non_linear_accuracies = self._disentanglement_metric(["VAE", "PCA", "ICA"], 50, lat_sizes, lat_imgs, n_epochs=150, dataset_size=5000, hidden_dim=128, use_non_linear=True) #if hidden dim too large -> no training possible
-
-
+        if use_wandb:
+            wandb.log({'VAE_accuracy': accuracies["VAE"], 'PCA_accuracy': accuracies["PCA"], 'ICA_accuracy': accuracies["ICA"]})
+            wandb.save("disentanglement_metrics.h5")
+        
         self.logger.info("Computing the empirical distribution q(z|x).")
         samples_zCx, params_zCx = self._compute_q_zCx(dataloader)
         len_dataset, latent_dim = samples_zCx.shape
@@ -177,7 +183,7 @@ class Evaluator:
     #maybe plot results of three models for different latent dimensions
     def _disentanglement_metric(self, method_names, sample_size, lat_sizes, imgs, n_epochs=50, dataset_size = 1000, hidden_dim = 256, use_non_linear = False):
 
-        #compute training- and test data for linear classifier
+        #train models for all concerned methods and stor them in a dict
         methods = {}
         for method_name in method_names:
             if method_name == "VAE":
@@ -185,9 +191,9 @@ class Evaluator:
 
             elif method_name == "PCA":    
                 self.logger.info("Training PCA...")
-                pca = decomposition.PCA(n_components=10, whiten = True)
+                pca = decomposition.PCA(n_components=self.model.latent_dim, whiten = True)
                 imgs_pca = np.reshape(imgs, (imgs.shape[0], imgs.shape[1]**2))
-                idx = np.random.randint(len(imgs_pca), size = 50000)
+                idx = np.random.randint(len(imgs_pca), size = 5000)
                 imgs_pca = imgs_pca[idx, :]       #not enough memory for full dataset -> repeat with random subsets               
                 pca.fit(imgs_pca)
                 methods["PCA"] = pca
@@ -195,9 +201,9 @@ class Evaluator:
 
             elif method_name == "ICA":
                 self.logger.info("Training ICA...")
-                ica = decomposition.FastICA(n_components=10)
+                ica = decomposition.FastICA(n_components=self.model.latent_dim)
                 imgs_ica = np.reshape(imgs, (imgs.shape[0], imgs.shape[1]**2))
-                idx = np.random.randint(len(imgs_pca), size = 1500)
+                idx = np.random.randint(len(imgs_pca), size = 1000)
                 imgs_ica = imgs_ica[idx, :]       #not enough memory for full dataset -> repeat with random subsets 
                 ica.fit(imgs_ica)
                 methods["ICA"] = ica
@@ -205,7 +211,7 @@ class Evaluator:
 
             else: 
                 raise ValueError("Unknown method : {}".format(method_name))
-                
+        #compute training- and test data for linear classifier      
         data_train =  self._compute_z_b_diff_y(methods, sample_size, lat_sizes, imgs)
         data_test =  self._compute_z_b_diff_y(methods, sample_size, lat_sizes, imgs)
         for method in methods.keys(): 
