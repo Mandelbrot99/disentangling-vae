@@ -1,6 +1,7 @@
 import os
 import logging
 import math
+import sys
 from functools import reduce
 from collections import defaultdict
 import json
@@ -8,6 +9,7 @@ from timeit import default_timer
 
 from tqdm import trange, tqdm
 import numpy as np
+from numpy.random import RandomState
 import torch
 from torch import pca_lowrank
 
@@ -18,6 +20,7 @@ from disvae.models.linear_model import LinearModel
 from disvae.models.linear_model import weight_reset
 from disvae.models.nonlinear_model import NonLinearModel
 
+from sklearn import decomposition
 
 TEST_LOSSES_FILE = "test_losses.log"
 METRICS_FILENAME = "metrics.log"
@@ -135,11 +138,8 @@ class Evaluator:
         except AttributeError:
             raise ValueError("Dataset needs to have known true factors of variations to compute the metric. This does not seem to be the case for {}".format(type(dataloader.__dict__["dataset"]).__name__))
         
-        #self.PCA(7, lat_sizes, lat_imgs)
-
-
         self.logger.info("Computing the disentanglement metric")
-        accuracies = self._disentanglement_metric(["VAE", "PCA"], 50, lat_sizes, lat_imgs, n_epochs=200, dataset_size=200, hidden_dim=512, use_non_linear=False)
+        accuracies = self._disentanglement_metric(["VAE", "PCA", "ICA"], 50, lat_sizes, lat_imgs, n_epochs=100, dataset_size=500, hidden_dim=1024, use_non_linear=False)
         non_linear_accuracies = self._disentanglement_metric(["VAE", "PCA"], 50, lat_sizes, lat_imgs, n_epochs=200, dataset_size=200, hidden_dim=512, use_non_linear=True)
 
 
@@ -172,21 +172,47 @@ class Evaluator:
 
         return metrics
 
-
-    def _disentanglement_metric(self, methods, sample_size, lat_sizes, imgs, n_epochs=50, dataset_size = 2000, hidden_dim = 256, use_non_linear = False):
+    #TODO: experiment with different numbers of latent dimensions for different models
+    def _disentanglement_metric(self, method_names, sample_size, lat_sizes, imgs, n_epochs=50, dataset_size = 2000, hidden_dim = 256, use_non_linear = False):
 
         #compute training- and test data for linear classifier
-        
+        methods = {}
+        for method_name in method_names:
+            if method_name == "VAE":
+                methods["VAE"] = self.model
+
+            elif method_name == "PCA":    
+                self.logger.info("Training PCA...")
+                pca = decomposition.PCA(n_components=10, whiten = True)
+                imgs_pca = np.reshape(imgs, (imgs.shape[0], imgs.shape[1]**2))
+                idx = np.random.randint(len(imgs_pca), size = 50000)
+                imgs_pca = imgs_pca[idx, :]       #not enough memory for full dataset -> repeat with random subsets               
+                pca.fit(imgs_pca)
+                methods["PCA"] = pca
+                self.logger.info("Done")
+
+            elif method_name == "ICA":
+                self.logger.info("Training ICA...")
+                ica = decomposition.FastICA(n_components=10)
+                imgs_ica = np.reshape(imgs, (imgs.shape[0], imgs.shape[1]**2))
+                idx = np.random.randint(len(imgs_pca), size = 5000)
+                imgs_ica = imgs_ica[idx, :]       #not enough memory for full dataset -> repeat with random subsets 
+                ica.fit(imgs_ica)
+                methods["ICA"] = ica
+                self.logger.info("Done")
+
+            else: 
+                raise ValueError("Unknown method : {}".format(method_name))
+                
         data_train =  self._compute_z_b_diff_y(methods, sample_size, lat_sizes, imgs)
         data_test =  self._compute_z_b_diff_y(methods, sample_size, lat_sizes, imgs)
-        for method in methods: 
+        for method in methods.keys(): 
             data_train[method][0].unsqueeze_(0)
             data_test[method][0].unsqueeze_(0)
        
         #latent dim = length of z_b_diff for arbitrary method = output dimension of linear classifier
         latent_dim = next(iter(data_test.values()))[0].shape[1]
 
-        
         #generate dataset_size many training data points and 20% of that test data points
         for i in range(dataset_size):
             data = self._compute_z_b_diff_y(methods, sample_size, lat_sizes, imgs)
@@ -215,7 +241,7 @@ class Evaluator:
         optim = torch.optim.Adam(model.parameters(), lr=0.01)
        
         test_acc = {}
-        for method in methods:
+        for method in methods.keys():
             print(f'Training the classifier for model {method}')
             for e in range(n_epochs):
                 optim.zero_grad()
@@ -263,24 +289,35 @@ class Evaluator:
 
         res = {}
         #calculate the expectation values of the normal distributions in the latent representation for the given images
-        for method in methods:
+        for method in methods.keys():
             if method == "VAE":
                 with torch.no_grad():
                     mu1, _ = self.model.encoder(imgs_sampled1.to(self.device))
                     mu2, _ = self.model.encoder(imgs_sampled2.to(self.device))  
-                    z_diff = torch.abs(torch.sub(mu1, mu2))
-                    z_diff_b = torch.mean(z_diff, 0)  
-                    res[method] = z_diff_b, torch.from_numpy(y)
             elif method == "PCA":
-                imgs_sampled1_squeezed = imgs_sampled1.squeeze(1)
-                imgs_sampled2_squeezed = imgs_sampled2.squeeze(1)
-                _, mu1, _ = torch.pca_lowrank(imgs_sampled1_squeezed,10)     #TODO change 10 to hidden dim of model
-                _, mu2, _ = torch.pca_lowrank(imgs_sampled2_squeezed,10)
-                z_diff = torch.abs(torch.sub(mu1, mu2))
-                z_diff_b = torch.mean(z_diff, 0)
-                res[method] = z_diff_b, torch.from_numpy(y)
+                pca = methods[method]
+                #flatten images
+                imgs_sampled_pca1 = torch.reshape(imgs_sampled1, (imgs_sampled1.shape[0], imgs_sampled1.shape[2]**2))
+                imgs_sampled_pca2 = torch.reshape(imgs_sampled2, (imgs_sampled2.shape[0], imgs_sampled2.shape[2]**2))
+                
+                mu1 = torch.from_numpy(pca.transform(imgs_sampled_pca1)).float()
+                mu2 = torch.from_numpy(pca.transform(imgs_sampled_pca2)).float()
+
+            elif method == "ICA":
+                ica = methods[method]
+                #flatten images
+                imgs_sampled_ica1 = torch.reshape(imgs_sampled1, (imgs_sampled1.shape[0], imgs_sampled1.shape[2]**2))
+                imgs_sampled_ica2 = torch.reshape(imgs_sampled2, (imgs_sampled2.shape[0], imgs_sampled2.shape[2]**2))
+                
+                mu1 = torch.from_numpy(ica.transform(imgs_sampled_ica1)).float()
+                mu2 = torch.from_numpy(ica.transform(imgs_sampled_ica2)).float()
+                
             else: 
-                raise ValueError("Unknown method : {}".format(method))        
+                raise ValueError("Unknown method : {}".format(method)) 
+
+            z_diff = torch.abs(torch.sub(mu1, mu2))
+            z_diff_b = torch.mean(z_diff, 0)
+            res[method] = z_diff_b, torch.from_numpy(y)
 
         return res
 

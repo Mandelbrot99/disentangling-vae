@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+from disvae.models.linear_model import LinearModel
 
 class NonLinearModel(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim):
