@@ -139,8 +139,8 @@ class Evaluator:
             raise ValueError("Dataset needs to have known true factors of variations to compute the metric. This does not seem to be the case for {}".format(type(dataloader.__dict__["dataset"]).__name__))
         
         self.logger.info("Computing the disentanglement metric")
-        accuracies = self._disentanglement_metric(["VAE", "PCA", "ICA"], 50, lat_sizes, lat_imgs, n_epochs=100, dataset_size=500, hidden_dim=1024, use_non_linear=False)
-        non_linear_accuracies = self._disentanglement_metric(["VAE", "PCA"], 50, lat_sizes, lat_imgs, n_epochs=200, dataset_size=200, hidden_dim=512, use_non_linear=True)
+        accuracies = self._disentanglement_metric(["VAE", "PCA", "ICA"], 50, lat_sizes, lat_imgs, n_epochs=150, dataset_size=5000, hidden_dim=128, use_non_linear=False)
+        non_linear_accuracies = self._disentanglement_metric(["VAE", "PCA", "ICA"], 50, lat_sizes, lat_imgs, n_epochs=150, dataset_size=5000, hidden_dim=128, use_non_linear=True) #if hidden dim too large -> no training possible
 
 
         self.logger.info("Computing the empirical distribution q(z|x).")
@@ -185,7 +185,7 @@ class Evaluator:
                 self.logger.info("Training PCA...")
                 pca = decomposition.PCA(n_components=10, whiten = True)
                 imgs_pca = np.reshape(imgs, (imgs.shape[0], imgs.shape[1]**2))
-                idx = np.random.randint(len(imgs_pca), size = 50000)
+                idx = np.random.randint(len(imgs_pca), size = 100000)
                 imgs_pca = imgs_pca[idx, :]       #not enough memory for full dataset -> repeat with random subsets               
                 pca.fit(imgs_pca)
                 methods["PCA"] = pca
@@ -195,7 +195,7 @@ class Evaluator:
                 self.logger.info("Training ICA...")
                 ica = decomposition.FastICA(n_components=10)
                 imgs_ica = np.reshape(imgs, (imgs.shape[0], imgs.shape[1]**2))
-                idx = np.random.randint(len(imgs_pca), size = 5000)
+                idx = np.random.randint(len(imgs_pca), size = 10000)
                 imgs_ica = imgs_ica[idx, :]       #not enough memory for full dataset -> repeat with random subsets 
                 ica.fit(imgs_ica)
                 methods["ICA"] = ica
@@ -229,9 +229,9 @@ class Evaluator:
                     Y_test = data_test[method][1]
                     data_test[method] = torch.cat((X_test, data[method][0].unsqueeze_(0)), 0), torch.cat((Y_test, data[method][1]), 0)
 
-        model = LinearModel(latent_dim,hidden_dim,len(lat_sizes))
-        if use_non_linear:
-            model = NonLinearModel(latent_dim,hidden_dim,len(lat_sizes))
+        model = LinearModel(latent_dim,hidden_dim,len(lat_sizes), use_non_linear)
+        #if use_non_linear:
+        #    model = NonLinearModel(latent_dim,hidden_dim,len(lat_sizes))
             
         model.to(self.device)
         model.train()

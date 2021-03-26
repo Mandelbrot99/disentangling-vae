@@ -4,7 +4,7 @@ from disvae.models.linear_model import LinearModel
 
 class NonLinearModel(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim):
-        super(LinearModel, self).__init__()
+        super(NonLinearModel, self).__init__()
         
         # Fully connected layer
         self.lin1 = nn.Linear(input_dim, hidden_dim)
