@@ -139,7 +139,7 @@ class Evaluator:
             raise ValueError("Dataset needs to have known true factors of variations to compute the metric. This does not seem to be the case for {}".format(type(dataloader.__dict__["dataset"]).__name__))
         
         self.logger.info("Computing the disentanglement metric")
-        accuracies = self._disentanglement_metric(["VAE", "PCA", "ICA"], 500, lat_sizes, lat_imgs, n_epochs=140, dataset_size=1000, hidden_dim=256, use_non_linear=False)
+        accuracies = self._disentanglement_metric(["VAE", "PCA", "ICA"], 300, lat_sizes, lat_imgs, n_epochs=150, dataset_size=1500, hidden_dim=256, use_non_linear=False)
         #sample size is key for VAE, for sample size 50 only 88% accuarcy, compared to 95 for 200 sample sze
         #non_linear_accuracies = self._disentanglement_metric(["VAE", "PCA", "ICA"], 50, lat_sizes, lat_imgs, n_epochs=150, dataset_size=5000, hidden_dim=128, use_non_linear=True) #if hidden dim too large -> no training possible
 
