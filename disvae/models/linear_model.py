@@ -15,7 +15,7 @@ class LinearModel(nn.Module):
             self.act1 = nn.ReLU()
             self.act2 = nn.ReLU()
             #self.act3 = nn.ReLU()
-        self.log_softmax = torch.nn.LogSoftmax() #correct dimension? dim =1 gives negative NLL
+        self.log_softmax = torch.nn.LogSoftmax(dim=1)
 
 
     def forward(self, x):

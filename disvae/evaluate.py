@@ -139,8 +139,9 @@ class Evaluator:
             raise ValueError("Dataset needs to have known true factors of variations to compute the metric. This does not seem to be the case for {}".format(type(dataloader.__dict__["dataset"]).__name__))
         
         self.logger.info("Computing the disentanglement metric")
-        accuracies = self._disentanglement_metric(["VAE", "PCA", "ICA"], 50, lat_sizes, lat_imgs, n_epochs=150, dataset_size=5000, hidden_dim=128, use_non_linear=False)
-        non_linear_accuracies = self._disentanglement_metric(["VAE", "PCA", "ICA"], 50, lat_sizes, lat_imgs, n_epochs=150, dataset_size=5000, hidden_dim=128, use_non_linear=True) #if hidden dim too large -> no training possible
+        accuracies = self._disentanglement_metric(["VAE", "PCA", "ICA"], 500, lat_sizes, lat_imgs, n_epochs=140, dataset_size=1000, hidden_dim=256, use_non_linear=False)
+        #sample size is key for VAE, for sample size 50 only 88% accuarcy, compared to 95 for 200 sample sze
+        #non_linear_accuracies = self._disentanglement_metric(["VAE", "PCA", "ICA"], 50, lat_sizes, lat_imgs, n_epochs=150, dataset_size=5000, hidden_dim=128, use_non_linear=True) #if hidden dim too large -> no training possible
 
 
         self.logger.info("Computing the empirical distribution q(z|x).")
@@ -173,7 +174,8 @@ class Evaluator:
         return metrics
 
     #TODO: experiment with different numbers of latent dimensions for different models
-    def _disentanglement_metric(self, method_names, sample_size, lat_sizes, imgs, n_epochs=50, dataset_size = 2000, hidden_dim = 256, use_non_linear = False):
+    #maybe plot results of three models for different latent dimensions
+    def _disentanglement_metric(self, method_names, sample_size, lat_sizes, imgs, n_epochs=50, dataset_size = 1000, hidden_dim = 256, use_non_linear = False):
 
         #compute training- and test data for linear classifier
         methods = {}
@@ -185,7 +187,7 @@ class Evaluator:
                 self.logger.info("Training PCA...")
                 pca = decomposition.PCA(n_components=10, whiten = True)
                 imgs_pca = np.reshape(imgs, (imgs.shape[0], imgs.shape[1]**2))
-                idx = np.random.randint(len(imgs_pca), size = 50000)
+                idx = np.random.randint(len(imgs_pca), size = 10000)
                 imgs_pca = imgs_pca[idx, :]       #not enough memory for full dataset -> repeat with random subsets               
                 pca.fit(imgs_pca)
                 methods["PCA"] = pca
@@ -195,7 +197,7 @@ class Evaluator:
                 self.logger.info("Training ICA...")
                 ica = decomposition.FastICA(n_components=10)
                 imgs_ica = np.reshape(imgs, (imgs.shape[0], imgs.shape[1]**2))
-                idx = np.random.randint(len(imgs_pca), size = 5000)
+                idx = np.random.randint(len(imgs_pca), size = 1000)
                 imgs_ica = imgs_ica[idx, :]       #not enough memory for full dataset -> repeat with random subsets 
                 ica.fit(imgs_ica)
                 methods["ICA"] = ica
