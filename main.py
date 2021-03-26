@@ -14,7 +14,7 @@ from utils.datasets import get_dataloaders, get_img_size, DATASETS
 from utils.helpers import (create_safe_directory, get_device, set_seed, get_n_param,
                            get_config_section, update_namespace_, FormatterNoDuplicate)
 from utils.visualize import GifTraversalsTraining
-
+import wandb
 
 CONFIG_FILE = "hyperparam.ini"
 RES_DIR = "results"
@@ -233,6 +233,8 @@ def main(args):
         model = load_model(exp_dir, is_gpu=not args.no_cuda)
         metadata = load_metadata(exp_dir)
         # TO-DO: currently uses train datatset
+
+        
         test_loader = get_dataloaders(metadata["dataset"],
                                       batch_size=args.eval_batchsize,
                                       shuffle=False,
@@ -241,11 +243,19 @@ def main(args):
                             n_data=len(test_loader.dataset),
                             device=device,
                             **vars(args))
+        
+        use_wandb = True
+        if use_wandb:
+            loss = args.loss
+            wandb.init(project="atmlbetavae", config= {"VAE_loss": args.loss})
+            if loss == "BetaH":
+                beta = loss_f.beta
+                wandb.config["Beta"] = beta
         evaluator = Evaluator(model, loss_f,
                               device=device,
                               logger=logger,
                               save_dir=exp_dir,
-                              is_progress_bar=not args.no_progress_bar)
+                              is_progress_bar=not args.no_progress_bar, use_wandb = use_wandb)
 
         evaluator(test_loader, is_metrics=args.is_metrics, is_losses=not args.no_test)
 

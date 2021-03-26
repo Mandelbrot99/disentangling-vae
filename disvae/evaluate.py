@@ -56,7 +56,7 @@ class Evaluator:
                  device=torch.device("cpu"),
                  logger=logging.getLogger(__name__),
                  save_dir="results",
-                 is_progress_bar=True):
+                 is_progress_bar=True, use_wandb = True):
 
         self.device = device
         self.loss_f = loss_f
@@ -65,6 +65,7 @@ class Evaluator:
         self.save_dir = save_dir
         self.is_progress_bar = is_progress_bar
         self.logger.info("Testing Device: {}".format(self.device))
+        self.use_wandb = use_wandb
 
     def __call__(self, data_loader, is_metrics=False, is_losses=True):
         """Compute all test losses.
@@ -132,9 +133,11 @@ class Evaluator:
         ----------
         data_loader: torch.utils.data.DataLoader
         """
-        use_wandb = True
-        if use_wandb:
-            wandb.init(project="atmlbetavae", config= {"latent_size": 10, "classifier_hidden_size": 512, "sample_size": 300, "PCA_training_size" : 5000, "ICA_training_size" : 1000})
+
+        if self.use_wandb:
+             wandb.config["latent_size"] = self.model.latent_dim
+             wandb.config["classifier_hidden_size"] = 512
+             wandb.config["sample_size"] = 300            
         try:
             lat_sizes = dataloader.dataset.lat_sizes
             lat_names = dataloader.dataset.lat_names
@@ -146,7 +149,7 @@ class Evaluator:
         accuracies = self._disentanglement_metric(["VAE", "PCA", "ICA"], 300, lat_sizes, lat_imgs, n_epochs=150, dataset_size=1500, hidden_dim=512, use_non_linear=False)
         #sample size is key for VAE, for sample size 50 only 88% accuarcy, compared to 95 for 200 sample sze
         #non_linear_accuracies = self._disentanglement_metric(["VAE", "PCA", "ICA"], 50, lat_sizes, lat_imgs, n_epochs=150, dataset_size=5000, hidden_dim=128, use_non_linear=True) #if hidden dim too large -> no training possible
-        if use_wandb:
+        if self.use_wandb:
             wandb.log({'VAE_accuracy': accuracies["VAE"], 'PCA_accuracy': accuracies["PCA"], 'ICA_accuracy': accuracies["ICA"]})
             wandb.save("disentanglement_metrics.h5")
         
@@ -193,7 +196,10 @@ class Evaluator:
                 self.logger.info("Training PCA...")
                 pca = decomposition.PCA(n_components=self.model.latent_dim, whiten = True)
                 imgs_pca = np.reshape(imgs, (imgs.shape[0], imgs.shape[1]**2))
-                idx = np.random.randint(len(imgs_pca), size = 5000)
+                size = 5000
+                if self.use_wandb:
+                    wandb.config["PCA_training_size"] = size
+                idx = np.random.randint(len(imgs_pca), size = size)
                 imgs_pca = imgs_pca[idx, :]       #not enough memory for full dataset -> repeat with random subsets               
                 pca.fit(imgs_pca)
                 methods["PCA"] = pca
@@ -203,7 +209,10 @@ class Evaluator:
                 self.logger.info("Training ICA...")
                 ica = decomposition.FastICA(n_components=self.model.latent_dim)
                 imgs_ica = np.reshape(imgs, (imgs.shape[0], imgs.shape[1]**2))
-                idx = np.random.randint(len(imgs_pca), size = 1000)
+                size = 1000
+                if self.use_wandb:
+                    wandb.config["ICA_training_size"] = size
+                idx = np.random.randint(len(imgs_pca), size = size)
                 imgs_ica = imgs_ica[idx, :]       #not enough memory for full dataset -> repeat with random subsets 
                 ica.fit(imgs_ica)
                 methods["ICA"] = ica
