@@ -16,9 +16,8 @@ from torch import pca_lowrank
 from disvae.models.losses import get_loss_f
 from disvae.utils.math import log_density_gaussian
 from disvae.utils.modelIO import save_metadata
-from disvae.models.linear_model import LinearModel
+from disvae.models.linear_model import Classifier
 from disvae.models.linear_model import weight_reset
-from disvae.models.nonlinear_model import NonLinearModel
 
 from sklearn import decomposition
 import wandb
@@ -246,9 +245,7 @@ class Evaluator:
                     Y_test = data_test[method][1]
                     data_test[method] = torch.cat((X_test, data[method][0].unsqueeze_(0)), 0), torch.cat((Y_test, data[method][1]), 0)
 
-        model = LinearModel(latent_dim,hidden_dim,len(lat_sizes), use_non_linear)
-        #if use_non_linear:
-        #    model = NonLinearModel(latent_dim,hidden_dim,len(lat_sizes))
+        model = Classifier(latent_dim,hidden_dim,len(lat_sizes), use_non_linear)
             
         model.to(self.device)
         model.train()
