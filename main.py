@@ -248,7 +248,7 @@ def main(args):
         if use_wandb:
             loss = args.loss
             wandb.init(project="atmlbetavae", config= {"VAE_loss": args.loss})
-            if loss == "BetaH":
+            if loss == "betaH":
                 beta = loss_f.beta
                 wandb.config["Beta"] = beta
         evaluator = Evaluator(model, loss_f,
