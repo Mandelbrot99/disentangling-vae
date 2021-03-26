@@ -132,7 +132,7 @@ class Evaluator:
         ----------
         data_loader: torch.utils.data.DataLoader
         """
-        use_wandb = False
+        use_wandb = True
         if use_wandb:
             wandb.init(project="atmlbetavae", config= {"latent_size": 10, "classifier_hidden_size": 512, "sample_size": 300, "PCA_training_size" : 5000, "ICA_training_size" : 1000})
         try:
