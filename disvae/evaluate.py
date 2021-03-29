@@ -16,9 +16,8 @@ from torch import pca_lowrank
 from disvae.models.losses import get_loss_f
 from disvae.utils.math import log_density_gaussian
 from disvae.utils.modelIO import save_metadata
-from disvae.models.linear_model import LinearModel
+from disvae.models.linear_model import Classifier
 from disvae.models.linear_model import weight_reset
-from disvae.models.nonlinear_model import NonLinearModel
 
 from sklearn import decomposition
 import wandb
@@ -146,7 +145,7 @@ class Evaluator:
             raise ValueError("Dataset needs to have known true factors of variations to compute the metric. This does not seem to be the case for {}".format(type(dataloader.__dict__["dataset"]).__name__))
         
         self.logger.info("Computing the disentanglement metric")
-        accuracies = self._disentanglement_metric(["VAE", "PCA", "ICA"], 300, lat_sizes, lat_imgs, n_epochs=150, dataset_size=1500, hidden_dim=512, use_non_linear=False)
+        accuracies = self._disentanglement_metric(dataloader.dataset, ["VAE", "PCA", "ICA"], 300, n_epochs=150, dataset_size=1500, hidden_dim=512, use_non_linear=False)
         #sample size is key for VAE, for sample size 50 only 88% accuarcy, compared to 95 for 200 sample sze
         #non_linear_accuracies = self._disentanglement_metric(["VAE", "PCA", "ICA"], 50, lat_sizes, lat_imgs, n_epochs=150, dataset_size=5000, hidden_dim=128, use_non_linear=True) #if hidden dim too large -> no training possible
         if self.use_wandb:
@@ -184,8 +183,9 @@ class Evaluator:
 
     #TODO: experiment with different numbers of latent dimensions for different models
     #maybe plot results of three models for different latent dimensions
-    def _disentanglement_metric(self, method_names, sample_size, lat_sizes, imgs, n_epochs=50, dataset_size = 1000, hidden_dim = 256, use_non_linear = False):
+    def _disentanglement_metric(self, dataset, method_names, sample_size, n_epochs=50, dataset_size = 1000, hidden_dim = 256, use_non_linear = False):
 
+        
         #train models for all concerned methods and stor them in a dict
         methods = {}
         for method_name in method_names:
@@ -195,7 +195,7 @@ class Evaluator:
             elif method_name == "PCA":    
                 self.logger.info("Training PCA...")
                 pca = decomposition.PCA(n_components=self.model.latent_dim, whiten = True)
-                imgs_pca = np.reshape(imgs, (imgs.shape[0], imgs.shape[1]**2))
+                imgs_pca = np.reshape(dataset.imgs, (dataset.imgs.shape[0], dataset.imgs.shape[1]**2))
                 size = 5000
                 if self.use_wandb:
                     wandb.config["PCA_training_size"] = size
@@ -208,7 +208,7 @@ class Evaluator:
             elif method_name == "ICA":
                 self.logger.info("Training ICA...")
                 ica = decomposition.FastICA(n_components=self.model.latent_dim)
-                imgs_ica = np.reshape(imgs, (imgs.shape[0], imgs.shape[1]**2))
+                imgs_ica = np.reshape(dataset.imgs, (dataset.imgs.shape[0], dataset.imgs.shape[1]**2))
                 size = 1000
                 if self.use_wandb:
                     wandb.config["ICA_training_size"] = size
@@ -221,8 +221,8 @@ class Evaluator:
             else: 
                 raise ValueError("Unknown method : {}".format(method_name))
         #compute training- and test data for linear classifier      
-        data_train =  self._compute_z_b_diff_y(methods, sample_size, lat_sizes, imgs)
-        data_test =  self._compute_z_b_diff_y(methods, sample_size, lat_sizes, imgs)
+        data_train =  self._compute_z_b_diff_y(methods, sample_size, dataset)
+        data_test =  self._compute_z_b_diff_y(methods, sample_size, dataset)
         for method in methods.keys(): 
             data_train[method][0].unsqueeze_(0)
             data_test[method][0].unsqueeze_(0)
@@ -232,7 +232,7 @@ class Evaluator:
 
         #generate dataset_size many training data points and 20% of that test data points
         for i in range(dataset_size):
-            data = self._compute_z_b_diff_y(methods, sample_size, lat_sizes, imgs)
+            data = self._compute_z_b_diff_y(methods, sample_size, dataset)
             for method in methods:
                 X_train = data_train[method][0]
                 Y_train = data_train[method][1]
@@ -240,15 +240,13 @@ class Evaluator:
             
             if i <= int(dataset_size*0.2):
                 
-                data = self._compute_z_b_diff_y(methods, sample_size, lat_sizes, imgs)
+                data = self._compute_z_b_diff_y(methods, sample_size, dataset)
                 for method in methods:
                     X_test = data_test[method][0]
                     Y_test = data_test[method][1]
                     data_test[method] = torch.cat((X_test, data[method][0].unsqueeze_(0)), 0), torch.cat((Y_test, data[method][1]), 0)
 
-        model = LinearModel(latent_dim,hidden_dim,len(lat_sizes), use_non_linear)
-        #if use_non_linear:
-        #    model = NonLinearModel(latent_dim,hidden_dim,len(lat_sizes))
+        model = Classifier(latent_dim,hidden_dim,len(dataset.lat_sizes), use_non_linear)
             
         model.to(self.device)
         model.train()
@@ -297,13 +295,17 @@ class Evaluator:
 
         return test_acc
 
-    def _compute_z_b_diff_y(self, methods, sample_size, lat_sizes, imgs):
+    def _compute_z_b_diff_y(self, methods, sample_size, dataset):
         """
         Compute the disentanglement metric score as proposed in the original paper
         reference: https://github.com/deepmind/dsprites-dataset/blob/master/dsprites_reloading_example.ipynb
         """
-        imgs_sampled1, imgs_sampled2, y = self._images_from_data_gen(sample_size, lat_sizes, imgs)
-
+        #sample laten factor to keep fixed
+        y = np.random.randint(dataset.lat_sizes.size, size=1)
+        y_lat = np.random.randint(dataset.lat_sizes[y], size=sample_size)
+        
+        imgs_sampled1  = dataset.images_from_data_gen(sample_size, y, y_lat)
+        imgs_sampled2  = dataset.images_from_data_gen(sample_size, y, y_lat)
         res = {}
         #calculate the expectation values of the normal distributions in the latent representation for the given images
         for method in methods.keys():
@@ -338,31 +340,6 @@ class Evaluator:
 
         return res
 
-    def _images_from_data_gen(self, sample_size, lat_sizes, imgs):
-
-        #sample random latent factor that is to be kept fixed
-        y = np.random.randint(lat_sizes.size, size=1)
-        y_lat = np.random.randint(lat_sizes[y], size=sample_size)
-
-        #sample to sets of data generative factors such that the yth value is the same accross the two sets
-        samples1 = np.zeros((sample_size, lat_sizes.size))
-        samples2 = np.zeros((sample_size, lat_sizes.size))
-
-        for i, lat_size in enumerate(lat_sizes):
-            samples1[:, i] = y_lat if i == y else np.random.randint(lat_size, size=sample_size) 
-            samples2[:, i] = y_lat if i == y else np.random.randint(lat_size, size=sample_size)
-
-        latents_bases = np.concatenate((lat_sizes[::-1].cumprod()[::-1][1:],
-                                np.array([1,])))
-
-        latent_indices1 = np.dot(samples1, latents_bases).astype(int)
-        latent_indices2 = np.dot(samples2, latents_bases).astype(int)
-
-        #use the data generative factors to simulate two sets of images from the dataset
-        imgs_sampled1 = torch.from_numpy(imgs[latent_indices1]).unsqueeze_(1).float()
-        imgs_sampled2 = torch.from_numpy(imgs[latent_indices2]).unsqueeze_(1).float()
-
-        return imgs_sampled1, imgs_sampled2, y
 
 
     def _mutual_information_gap(self, sorted_mut_info, lat_sizes, storer=None):

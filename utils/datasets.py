@@ -15,6 +15,8 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, datasets
 
+import h5py
+
 DIR = os.path.abspath(os.path.dirname(__file__))
 COLOUR_BLACK = 0
 COLOUR_WHITE = 1
@@ -22,7 +24,9 @@ DATASETS_DICT = {"mnist": "MNIST",
                  "fashion": "FashionMNIST",
                  "dsprites": "DSprites",
                  "celeba": "CelebA",
-                 "chairs": "Chairs"}
+                 "chairs": "Chairs",
+                 "mpi3dtoy": "MPI3DToy",
+                 "3dshapes": "Shapes3D"}
 DATASETS = list(DATASETS_DICT.keys())
 
 
@@ -112,6 +116,173 @@ class DisentangledDataset(Dataset, abc.ABC):
     def download(self):
         """Download the dataset. """
         pass
+
+class Shapes3D(DisentangledDataset):
+    """Shapes3D Dataset from [1].
+
+    Disentanglement test Toy dataset. Procedurally generated 3D shapes, from 7
+    disentangled latent factors. This dataset uses 7 latents, controlling the object color,
+    object shape, object size, camera height, background color, horizontal axis and vertical axis of a sprite. All possible variations of
+    the latents are present. Ordering along dimension 1 is fixed and can be mapped
+    back to the exact latent values that generated that image. Pixel outputs are
+    different. No noise added.
+
+    Notes
+    -----
+    - Link : https://github.com/deepmind/3d-shapes
+    - hard coded metadata because issue with python 3 loading of python 2
+
+    Parameters
+    ----------
+    root : string
+        Root directory of dataset.
+
+    References
+    ----------
+    [1]http://proceedings.mlr.press/v80/kim18b.html
+
+    """
+    urls = {"train": "https://storage.cloud.google.com/3d-shapes/3dshapes.h5"}
+    files = {"train": "3dshapes.h5"}
+    lat_names = ('floor_hue', 'wall_hue', 'object_hue', 'scale', 'shape',
+                     'orientation')
+    lat_sizes = np.array([10, 10, 10, 8, 4, 15])
+    img_size = (3, 64, 64)
+    background_color = COLOUR_BLACK
+    
+
+    def __init__(self, root=os.path.join(DIR, '../data/3dshapes/'), **kwargs):
+        super().__init__(root, [transforms.ToTensor()], **kwargs)  
+        dataset_zip = h5py.File(self.train_data, 'r')
+        self.imgs = dataset_zip['images']
+        self.lat_values = dataset_zip['labels']
+        '''
+        indices = np.random.choice(480000, 32)
+        print(self.imgs[indices[0]])
+        #np.asarray(self.imgs)
+        self.lat_values = self.imgs.reshape([10, 10, 10, 8, 4, 15,64,64,3])[:,:,:,:,:,:,:,0,0,0]
+        '''
+    def download(self):
+        """Download the dataset."""
+        os.makedirs(self.root)
+        subprocess.check_call(["curl", "-L", type(self).urls["train"],
+                               "--output", self.train_data])
+
+    def __getitem__(self, idx):
+        """Get the image of `idx`
+        Return
+        ------
+        sample : torch.Tensor
+            Tensor in [0.,1.] of shape `img_size`.
+
+        lat_value : np.array
+            Array of length 6, that gives the value of each factor of variation.
+        """
+        # stored image have binary and shape (H x W) so multiply by 255 to get pixel
+        # values + add dimension
+        im = self.imgs[idx]
+        # ToTensor transforms numpy.ndarray (H x W x C) in the range
+        # [0, 255] to a torch.FloatTensor of shape (C x H x W) in the range [0.0, 1.0]
+        im = self.transforms(im)
+
+        lat_value = self.lat_values[idx]
+        return im, lat_value
+
+    def images_from_data_gen(self, sample_size, y, y_lat):
+        #sample two sets of data generative factors such that the yth value is the same accross the two sets
+
+        samples = np.zeros((sample_size, self.lat_sizes.size))
+
+        for i, lat_size in enumerate(self.lat_sizes):
+            samples[:, i] = y_lat if i == y else np.random.randint(lat_size, size=sample_size) 
+        latents_bases = np.concatenate((self.lat_sizes[::-1].cumprod()[::-1][1:],
+                                np.array([1,])))
+
+        latent_indices = np.dot(samples, latents_bases).astype(int)
+
+        ims = []
+        for ind in latent_indices:
+            im = self.imgs[ind]
+            im = np.asarray(im)
+            ims.append(im)
+        ims = np.stack(ims, axis=0)
+        print(ims.shape)
+        print(self.transforms(ims).shape)
+        return self.transforms(ims) 
+        
+
+
+
+class MPI3DToy(DisentangledDataset):
+    """MPI3D Dataset from [1].
+
+    Disentanglement test Toy dataset. Procedurally generated 3D shapes, from 7
+    disentangled latent factors. This dataset uses 7 latents, controlling the object color,
+    object shape, object size, camera height, background color, horizontal axis and vertical axis of a sprite. All possible variations of
+    the latents are present. Ordering along dimension 1 is fixed and can be mapped
+    back to the exact latent values that generated that image. Pixel outputs are
+    different. No noise added.
+
+    Notes
+    -----
+    - Link : https://github.com/rr-learning/disentanglement_dataset
+    - hard coded metadata because issue with python 3 loading of python 2
+
+    Parameters
+    ----------
+    root : string
+        Root directory of dataset.
+
+    References
+    ----------
+    [1] Higgins, I., Matthey, L., Pal, A., Burgess, C., Glorot, X., Botvinick,
+        M., ... & Lerchner, A. (2017). beta-vae: Learning basic visual concepts
+        with a constrained variational framework. In International Conference
+        on Learning Representations.
+
+    """
+    urls = {"train": "https://storage.googleapis.com/disentanglement_dataset/Final_Dataset/mpi3d_toy.npz"}
+    files = {"train": "mpi3d_toy.npz"}
+    lat_names = ('object_color', 'object_shape', 'object_size', 'camera_height', 'background_color', 'horizontal_axis', 'vertical_axis')
+    lat_sizes = np.array([6, 6, 2, 3, 3, 40, 40])
+    img_size = (3, 64, 64)
+    background_color = COLOUR_BLACK
+    
+
+    def __init__(self, root=os.path.join(DIR, '../data/mpi3dtoy/'), **kwargs):
+        super().__init__(root, [transforms.ToTensor()], **kwargs)
+        print('test')
+        dataset_zip = np.load(self.train_data)
+        #not enough RAM :(
+        self.imgs = dataset_zip['images']
+        self.lat_values = self.imgs.reshape([6,6,2,3,3,40,40,64,64,3])[:,:,:,:,:,:,:,0,0,0]
+        
+    def download(self):
+        """Download the dataset."""
+        os.makedirs(self.root)
+        subprocess.check_call(["curl", "-L", type(self).urls["train"],
+                               "--output", self.train_data])
+
+    def __getitem__(self, idx):
+        """Get the image of `idx`
+        Return
+        ------
+        sample : torch.Tensor
+            Tensor in [0.,1.] of shape `img_size`.
+
+        lat_value : np.array
+            Array of length 6, that gives the value of each factor of variation.
+        """
+        # stored image have binary and shape (H x W) so multiply by 255 to get pixel
+        # values + add dimension
+        sample = np.expand_dims(self.imgs[idx] * 255, axis=-1)
+
+        # ToTensor transforms numpy.ndarray (H x W x C) in the range
+        # [0, 255] to a torch.FloatTensor of shape (C x H x W) in the range [0.0, 1.0]
+        sample = self.transforms(sample)
+
+        lat_value = self.lat_values[idx]
+        return sample, lat_value
 
 
 class DSprites(DisentangledDataset):
@@ -211,6 +382,24 @@ class DSprites(DisentangledDataset):
 
         lat_value = self.lat_values[idx]
         return sample, lat_value
+
+    def images_from_data_gen(self, sample_size, y, y_lat):
+
+        #sample two sets of data generative factors such that the yth value is the same accross the two sets
+        samples = np.zeros((sample_size, self.lat_sizes.size))
+
+        for i, lat_size in enumerate(self.lat_sizes):
+            samples[:, i] = y_lat if i == y else np.random.randint(lat_size, size=sample_size) 
+        latents_bases = np.concatenate((self.lat_sizes[::-1].cumprod()[::-1][1:],
+                                np.array([1,])))
+
+        latent_indices = np.dot(samples, latents_bases).astype(int)
+    
+        #use the data generative factors to simulate two sets of images from the dataset
+        imgs_sampled = torch.from_numpy(self.imgs[latent_indices]).unsqueeze_(1).float()
+
+        #print(imgs_sampled.shape)
+        return imgs_sampled
 
 
 class CelebA(DisentangledDataset):

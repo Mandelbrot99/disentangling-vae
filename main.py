@@ -244,7 +244,7 @@ def main(args):
                             device=device,
                             **vars(args))
         
-        use_wandb = True
+        use_wandb = False
         if use_wandb:
             loss = args.loss
             wandb.init(project="atmlbetavae", config= {"VAE_loss": args.loss})
